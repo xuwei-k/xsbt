@@ -431,14 +431,14 @@ object Defaults extends BuildCommon
 	def concatMappings(as: Mappings, bs: Mappings) = (as zipWith bs)( (a,b) => (a :^: b :^: KNil) map { case a :+: b :+: HNil => a ++ b } )
 
 	// drop base directories, since there are no valid mappings for these
-	def sourceMappings = (unmanagedSources, unmanagedSourceDirectories, baseDirectory) map { (srcs, sdirs, base) =>
-		 ( (srcs --- sdirs --- base) pair (relativeTo(sdirs)|relativeTo(base)|flat)) toSeq
+	def sourceMappings = (unmanagedSources, unmanagedSourceDirectories, managedSources, managedSourceDirectories, baseDirectory) map {
+		(unmanagedSrcs, unmanagedDirs, managedSrcs, managedDirs, base) =>
+		 ( (unmanagedSrcs +++ managedSrcs --- unmanagedDirs --- managedDirs --- base) pair (relativeTo(unmanagedDirs)|relativeTo(managedDirs)|relativeTo(base)|flat)) toSeq
 	}
-	def resourceMappings = relativeMappings(unmanagedResources, unmanagedResourceDirectories)
-	def relativeMappings(files: ScopedTaskable[Seq[File]], dirs: ScopedTaskable[Seq[File]]): Initialize[Task[Seq[(File, String)]]] =
-		(files, dirs) map { (rs, rdirs) =>
-			(rs --- rdirs) pair (relativeTo(rdirs)|flat) toSeq
-		}
+	def resourceMappings = (unmanagedResources, unmanagedResourceDirectories, managedResources, managedResourceDirectories, baseDirectory) map {
+		(unmanagedRes, unmanagedDirs, managedRes, managedDirs, base) =>
+		 ( (unmanagedRes +++ managedRes --- unmanagedDirs --- managedDirs --- base) pair (relativeTo(unmanagedDirs)|relativeTo(managedDirs)|relativeTo(base)|flat)) toSeq
+	}
 
 	def collectFiles(dirs: ScopedTaskable[Seq[File]], filter: ScopedTaskable[FileFilter], excludes: ScopedTaskable[FileFilter]): Initialize[Task[Seq[File]]] =
 		(dirs, filter, excludes) map { (d,f,excl) => d.descendantsExcept(f,excl).get }
