@@ -1,4 +1,6 @@
 language: scala
+before_script:
+  - sbt checkFormat
 script:
   - sbt "scripted $SCRIPTED_TEST"
 env:

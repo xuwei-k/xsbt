@@ -10,7 +10,12 @@ object Formatting {
   lazy val prefs: Seq[Setting[_]] = {
     import scalariform.formatter.preferences._
     Seq(
-      sr.preferences := sr.preferences.value.setPreference(AlignSingleLineCaseStatements, true)
+      sr.preferences := sr.preferences.value.setPreference(AlignSingleLineCaseStatements, true),
+      TaskKey[Unit]("checkFormat") := {
+        val _ = (sr.format in Compile).value
+        val diff = sys.process.Process("git diff").lines_!
+        assert(diff.size == 0, diff.mkString("\n"))
+      }
     )
   }
   lazy val sbtFilesSettings: Seq[Setting[_]] = Seq() ++ scalariformSettings ++ prefs ++
