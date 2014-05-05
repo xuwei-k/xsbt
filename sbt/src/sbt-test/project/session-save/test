@@ -23,3 +23,12 @@ $ must-mirror build.sbt build.check.2
 -> k1
 > k2
 $ must-mirror build.sbt build.check.3
+
+> set k1 := {println("k1")}
+> session save a.sbt
+$ exists a.sbt
+
+> set k1 := {println("k1")}
+-> session save invalid-file-name
+$ absent invalid-file-name
+

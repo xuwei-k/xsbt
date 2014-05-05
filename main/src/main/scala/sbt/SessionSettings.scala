@@ -73,27 +73,27 @@ object SessionSettings
 			val newAppend = session.append.updated(current, removeRanges(session.append.getOrElse(current, Nil), ranges))
 			reapply(session.copy( append = newAppend ), s)
 		}
-	def saveAllSettings(s: State): State = saveSomeSettings(s)(_ => true)
-	def saveSettings(s: State): State =
+	def saveAllSettings(s: State, saveFile: Option[String]): State = saveSomeSettings(s, saveFile)(_ => true)
+	def saveSettings(s: State, saveFile: Option[String]): State =
 	{
 		val current = Project.session(s).current
-		saveSomeSettings(s)( _ == current)
+		saveSomeSettings(s, saveFile)( _ == current)
 	}
-	def saveSomeSettings(s: State)(include: ProjectRef => Boolean): State =
+	def saveSomeSettings(s: State, saveFile: Option[String])(include: ProjectRef => Boolean): State =
 		withSettings(s){session =>
 			val newSettings =
 				for( (ref, settings) <- session.append if !settings.isEmpty && include(ref) ) yield {
-					val (news, olds) = writeSettings(ref, settings.toList, session.original, Project.structure(s))
+					val (news, olds) = writeSettings(ref, settings.toList, session.original, Project.structure(s), saveFile: Option[String])
 					(ref -> news, olds)
 				}
       val (newAppend, newOriginal) = newSettings.unzip
       val newSession = session.copy(append = newAppend.toMap, original = newOriginal.flatten.toSeq)
 			reapply(newSession.copy(original = newSession.mergeSettings, append = Map.empty), s)
 		}
-	def writeSettings(pref: ProjectRef, settings: List[SessionSetting], original: Seq[Setting[_]], structure: BuildStructure): (Seq[SessionSetting], Seq[Setting[_]]) =
+	def writeSettings(pref: ProjectRef, settings: List[SessionSetting], original: Seq[Setting[_]], structure: BuildStructure, saveFile: Option[String]): (Seq[SessionSetting], Seq[Setting[_]]) =
 	{
 		val project = Project.getProject(pref, structure).getOrElse(sys.error("Invalid project reference " + pref))
-		val writeTo: File = BuildPaths.configurationSources(project.base).headOption.getOrElse(new File(project.base, "build.sbt"))
+		val writeTo: File = saveFile.map(new File(project.base, _)) getOrElse BuildPaths.configurationSources(project.base).headOption.getOrElse(new File(project.base, "build.sbt"))
 		writeTo.createNewFile()
 
 		val path = writeTo.getAbsolutePath
@@ -191,16 +191,24 @@ save, save-all
 	sealed trait SessionCommand
 	final class Print(val all: Boolean) extends SessionCommand
 	final class Clear(val all: Boolean) extends SessionCommand
-	final class Save(val all: Boolean) extends SessionCommand
+	final class Save(val all: Boolean, val saveFile: Option[String]) extends SessionCommand
 	final class Remove(val ranges: Seq[(Int,Int)]) extends SessionCommand
 
 	import complete._
 	import DefaultParsers._
 
+	private[this] def saveParser(name: String, all: Boolean): Parser[SessionCommand] = {
+		val saveFileParser =
+			token(StringBasic, "file name").filter(name => name.endsWith(".sbt") && name != ".sbt", _ => "invalid file name")
+		(token(name ^^^ all) ~ (Space ~> saveFileParser).?).map{
+			case (all, saveFile) => new Save(all, saveFile)
+		}
+	}
+
 	lazy val parser =
 		token(Space) ~>
 		(token("list-all" ^^^ new Print(true)) | token("list" ^^^ new Print(false)) | token("clear" ^^^ new Clear(false)) |
-		token("save-all" ^^^ new Save(true)) | token("save" ^^^ new Save(false)) | token("clear-all" ^^^ new Clear(true)) |
+		saveParser("save-all", true) | saveParser("save", false) | token("clear-all" ^^^ new Clear(true)) |
 		remove)
 
 	lazy val remove = token("remove") ~> token(Space) ~> natSelect.map(ranges => new Remove(ranges))
@@ -209,7 +217,7 @@ save, save-all
 
 	def command(s: State) = Command.applyEffect(parser){
 		case p: Print => if(p.all) printAllSettings(s) else printSettings(s)
-		case v: Save => if(v.all) saveAllSettings(s) else saveSettings(s)
+		case v: Save => if(v.all) saveAllSettings(s, v.saveFile) else saveSettings(s, v.saveFile)
 		case c: Clear => if(c.all) clearAllSettings(s) else clearSettings(s)
 		case r: Remove => removeSettings(s,r.ranges)
 	}
