@@ -114,8 +114,14 @@ private[sbt] case class SbtParser(file: File, lines: Seq[String]) extends Parsed
       case _         => false
     }
 
-    def convertImport(t: Tree): (String, Int) =
-      (modifiedContent.substring(t.pos.start, t.pos.end), t.pos.line - 1)
+    def convertImport(t: Tree): (String, Int) = {
+      val str = modifiedContent.substring(t.pos.start, t.pos.end)
+      if (str.startsWith("import")) {
+        (str, t.pos.line - 1)
+      } else {
+        sys.error("could not parse comma separated import")
+      }
+    }
 
     /**
      * See BugInParser

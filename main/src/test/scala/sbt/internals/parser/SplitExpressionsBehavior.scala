@@ -27,6 +27,10 @@ trait SplitExpressionsBehavior extends SplitExpression {
       settingsAndDefs.isEmpty should beTrue
     }
 
+    "parse a config containing a comma separated import" in {
+      val (imports, settingsAndDefs) = split("""import foo._, bar._ """)
+    }
+
     "parse a config containing two imports and a setting" in {
       val (imports, settingsAndDefs) = split(
         """import foo.Bar
