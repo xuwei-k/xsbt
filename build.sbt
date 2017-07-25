@@ -2,6 +2,8 @@ import Util._
 import Dependencies._
 import Sxr.sxr
 
+resolvers in Global += "staging" at "https://oss.sonatype.org/content/repositories/staging/"
+
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
 def buildLevelSettings: Seq[Setting[_]] =

@@ -430,7 +430,7 @@ object Defaults extends BuildCommon {
     VersionNumber(sv) match {
       case VersionNumber(Seq(0, 12, _*), _, _) => "2.9.2"
       case VersionNumber(Seq(0, 13, _*), _, _) => "2.10.6"
-      case VersionNumber(Seq(1, _, _*), _, _)  => "2.12.2"
+      case VersionNumber(Seq(1, _, _*), _, _)  => "2.12.3"
       case _                                   => sys.error(s"Unsupported sbt binary version: $sv")
     }
 
@@ -1746,6 +1746,7 @@ object Classpaths {
         moduleConfigurations :== Nil,
         publishTo :== None,
         resolvers :== Vector.empty,
+        resolvers in Scope.Global += "staging" at "https://oss.sonatype.org/content/repositories/staging/",
         useJCenter :== false,
         retrievePattern :== Resolver.defaultRetrievePattern,
         transitiveClassifiers :== Seq(SourceClassifier, DocClassifier),

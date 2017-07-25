@@ -1,5 +1,7 @@
-scalaVersion := "2.12.2"
+scalaVersion := "2.12.3"
 scalacOptions ++= Seq("-feature", "-language:postfixOps")
+
+resolvers in Global += "staging" at "https://oss.sonatype.org/content/repositories/staging/"
 
 // addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.1.14")
 // addSbtPlugin("com.typesafe.sbt" % "sbt-ghpages" % "0.6.0")
