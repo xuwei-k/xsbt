@@ -409,8 +409,8 @@ lazy val mainProj = (project in file("main"))
       // ctor for ConfigIndex. internal.
       exclude[DirectMissingMethodProblem]("sbt.internal.ConfigIndex.*"),
       // New and changed methods on KeyIndex. internal.
-      exclude[ReversedMissingMethodProblem]("sbt.internal.KeyIndex.*"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.KeyIndex.*"),
+      exclude[ReversedMissingMethodProblem]("sbt.internal.KeyIndex.fromConfigIdent"),
+      exclude[ReversedMissingMethodProblem]("sbt.internal.KeyIndex.configIdents"),
       // Removed unused val. internal.
       exclude[DirectMissingMethodProblem]("sbt.internal.RelayAppender.jsonFormat"),
       // Removed unused def. internal.

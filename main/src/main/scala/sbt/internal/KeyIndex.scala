@@ -17,10 +17,16 @@ import sbt.librarymanagement.Configuration
 
 object KeyIndex {
   def empty: ExtendableKeyIndex = new KeyIndex0(emptyBuildIndex)
+  def apply(known: Iterable[ScopedKey[_]], projects: Map[URI, Set[String]]): ExtendableKeyIndex =
+    apply(known = known, projects = projects, configurations = Map.empty)
   def apply(known: Iterable[ScopedKey[_]],
             projects: Map[URI, Set[String]],
             configurations: Map[String, Seq[Configuration]]): ExtendableKeyIndex =
     (base(projects, configurations) /: known) { _ add _ }
+  def aggregate(known: Iterable[ScopedKey[_]],
+                extra: BuildUtil[_],
+                projects: Map[URI, Set[String]]): ExtendableKeyIndex =
+    aggregate(known = known, extra = extra, projects = projects, configurations = Map.empty)
   def aggregate(known: Iterable[ScopedKey[_]],
                 extra: BuildUtil[_],
                 projects: Map[URI, Set[String]],
