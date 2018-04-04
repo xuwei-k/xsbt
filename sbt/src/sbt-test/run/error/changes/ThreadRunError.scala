@@ -1,6 +1,6 @@
 object Spawn
 {
-	def main(args: Array[String])
+	def main(args: Array[String]): Unit =
 	{
 		(new ThreadA).start
 	}

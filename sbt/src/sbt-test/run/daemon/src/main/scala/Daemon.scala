@@ -1,6 +1,6 @@
 object Daemon
 {
-	def main(args: Array[String])
+	def main(args: Array[String]): Unit =
 	{
 		val t = new Thread {
 			override def run(): Unit = synchronized { wait() }

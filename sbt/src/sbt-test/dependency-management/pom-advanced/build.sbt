@@ -29,7 +29,7 @@ def addSlash(s: String): String = s match {
   case _ => s + "/"
 }
 
-def checkPomRepositories(file: File, args: Seq[String], s: TaskStreams) {
+def checkPomRepositories(file: File, args: Seq[String], s: TaskStreams): Unit = {
   val repositories = scala.xml.XML.loadFile(file) \\ "repository"
   val extracted = repositories.map { repo => MavenRepository(repo \ "name" text, addSlash(repo \ "url" text)) }
   val expected = args.map(GlobFilter.apply)

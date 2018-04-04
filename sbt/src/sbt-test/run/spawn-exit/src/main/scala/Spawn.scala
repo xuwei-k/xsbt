@@ -6,13 +6,13 @@
 
 object Spawn
 {
-	def main(args: Array[String])
+	def main(args: Array[String]): Unit =
 	{
 		(new ThreadA).start
 	}
 	class ThreadA extends Thread
 	{
-		override def run()
+		override def run(): Unit =
 		{
 			Thread.sleep(1000)
 			(new ThreadB).start()
@@ -21,7 +21,7 @@ object Spawn
 	}
 	class ThreadB extends Thread
 	{
-		override def run()
+		override def run(): Unit =
 		{
 			Thread.sleep(1000)
 			System.exit(0)

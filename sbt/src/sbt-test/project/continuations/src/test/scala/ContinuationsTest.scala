@@ -4,7 +4,7 @@ import Assert._
 class ContinuationsTest
 {
 	@Test
-	def basic
+	def basic: Unit =
 	{
 		assertTrue(Example.x == 20)
 	}

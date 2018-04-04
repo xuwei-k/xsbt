@@ -9,9 +9,9 @@ class NestedSpecs extends Suites (
 @DoNotDiscover
 class TestSpec extends Spec {
 
-	def `TestSpec-test-1 ` {}
+	def `TestSpec-test-1 `: Unit = {}
 
-	def `TestSpec-test-2 ` {}
+	def `TestSpec-test-2 `: Unit = {}
 	
-	def `TestSpec-test-3 ` {}
+	def `TestSpec-test-3 `: Unit = {}
 }
