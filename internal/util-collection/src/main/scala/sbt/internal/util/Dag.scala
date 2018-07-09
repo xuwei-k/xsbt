@@ -26,7 +26,7 @@ object Dag {
     def visitAll(nodes: Iterable[T]) = nodes foreach visit
     def visit(node: T): Unit = {
       if (!discovered(node)) {
-        discovered(node) = true;
+        discovered(node) = true
         try { visitAll(dependencies(node)); } catch { case c: Cyclic => throw node :: c }
         finished += node
         ()
@@ -56,8 +56,8 @@ object Dag {
       }
     }
 
-    visitAll(nodes);
-    finished;
+    visitAll(nodes)
+    finished
   }
 
   final class Cyclic(val value: Any, val all: List[Any], val complete: Boolean)

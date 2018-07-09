@@ -106,7 +106,7 @@ final class ContextUtil[C <: blackbox.Context](val ctx: C) {
             if isWrapper(nme.decodedName.toString, tpe.tpe, qual) =>
           ()
         case tree =>
-          if (tree.symbol ne null) defs += tree.symbol;
+          if (tree.symbol ne null) defs += tree.symbol
           super.traverse(tree)
       }
     }
@@ -176,7 +176,7 @@ final class ContextUtil[C <: blackbox.Context](val ctx: C) {
   /** Constructs a new, synthetic type variable that is a type constructor. For example, in type Y[L[x]], L is such a type variable. */
   def newTCVariable(owner: Symbol): TypeSymbol = {
     val tc = newTypeVariable(owner)
-    val arg = newTypeVariable(tc, "x");
+    val arg = newTypeVariable(tc, "x")
     tc.setInfo(internal.polyType(arg :: Nil, emptyTypeBounds))
     tc
   }

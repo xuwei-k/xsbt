@@ -62,7 +62,7 @@ object PluginManagement {
     )
 
   def extractOverrides(classpath: Classpath): Set[ModuleID] =
-    classpath flatMap { _.metadata get Keys.moduleID.key map keepOverrideInfo } toSet;
+    classpath flatMap { _.metadata get Keys.moduleID.key map keepOverrideInfo } toSet
 
   def keepOverrideInfo(m: ModuleID): ModuleID =
     ModuleID(m.organization, m.name, m.revision).withCrossVersion(m.crossVersion)

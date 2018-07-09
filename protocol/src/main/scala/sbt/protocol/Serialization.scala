@@ -171,8 +171,8 @@ object Serialization {
     Parser.parseFromByteBuffer(buffer) match {
       case Success(json @ JObject(fields)) =>
         import sbt.internal.protocol.codec.JsonRPCProtocol._
-        if ((fields find { _.field == "method" }).isDefined) {
-          if ((fields find { _.field == "id" }).isDefined)
+        if (fields exists { _.field == "method" }) {
+          if (fields exists { _.field == "id" })
             Converter.fromJson[JsonRpcRequestMessage](json) match {
               case Success(request) => Right(request)
               case Failure(e)       => Left(s"Conversion error: ${e.getMessage}")

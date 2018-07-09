@@ -186,7 +186,7 @@ abstract class TestBuild {
   def mapBy[K, T](s: Seq[T])(f: T => K): Map[K, T] =
     s map { t =>
       (f(t), t)
-    } toMap;
+    } toMap
 
   implicit lazy val arbKeys: Arbitrary[Keys] = Arbitrary(keysGen)
   lazy val keysGen: Gen[Keys] = for (env <- mkEnv; keyCount <- chooseShrinkable(1, KeysPerEnv);
