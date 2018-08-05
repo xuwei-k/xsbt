@@ -892,19 +892,29 @@ trait ProjectExtra {
   implicit def richTaskSessionVar[T](init: Initialize[Task[T]]): Project.RichTaskSessionVar[T] =
     new Project.RichTaskSessionVar(init)
 
+  private[this] def flattenSettings(ss: Seq[SettingsDefinition]): Seq[Setting[_]] = {
+    ss.flatMap { s0 =>
+      // https://github.com/sbt/sbt/issues/4299
+      (s0: Any) match {
+        case s: SettingsDefinition => s.settings
+        case s: Setting[_]         => Seq(s)
+      }
+    }
+  }
+
   def inThisBuild(ss: SettingsDefinition*): Seq[Setting[_]] =
-    inScope(ThisScope.copy(project = Select(ThisBuild)))(ss flatMap (_.settings))
+    inScope(ThisScope.copy(project = Select(ThisBuild)))(flattenSettings(ss))
 
   def inConfig(conf: Configuration)(ss: SettingsDefinition*): Seq[Setting[_]] =
     inScope(ThisScope.copy(config = Select(conf)))(
-      (configuration :== conf) +: (ss flatMap (_.settings))
+      (configuration :== conf) +: flattenSettings(ss)
     )
 
   def inTask(t: Scoped)(ss: SettingsDefinition*): Seq[Setting[_]] =
-    inScope(ThisScope.copy(task = Select(t.key)))(ss flatMap (_.settings))
+    inScope(ThisScope.copy(task = Select(t.key)))(flattenSettings(ss))
 
   def inScope(scope: Scope)(ss: SettingsDefinition*): Seq[Setting[_]] =
-    Project.transform(Scope.replaceThis(scope), ss flatMap (_.settings))
+    Project.transform(Scope.replaceThis(scope), flattenSettings(ss))
 
   private[sbt] def inThisBuild[T](i: Initialize[T]): Initialize[T] =
     inScope(ThisScope.copy(project = Select(ThisBuild)), i)
