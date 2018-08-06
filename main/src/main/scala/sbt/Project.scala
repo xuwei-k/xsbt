@@ -852,6 +852,21 @@ object Project extends ProjectExtra {
 
   import scala.reflect.macros._
 
+  def inThisBuildMacro(c: blackbox.Context)(ss: c.Tree*): c.Tree = {
+    import c.universe._
+    q"_root_.sbt.Project.inThisBuild(_root_.scala.collection.Seq(..$ss).flatMap(_.settings))"
+  }
+
+  def inConfigMacro(c: blackbox.Context)(conf: c.Tree)(ss: c.Tree*): c.Tree = {
+    import c.universe._
+    q"_root_.sbt.Project.inConfig($conf)(_root_.scala.collection.Seq(..$ss).flatMap(_.settings))"
+  }
+
+  def inTaskMacro(c: blackbox.Context)(t: c.Tree)(ss: c.Tree*): c.Tree = {
+    import c.universe._
+    q"_root_.sbt.Project.inTask($t)(_root_.scala.collection.Seq(..$ss).flatMap(_.settings))"
+  }
+
   def projectMacroImpl(c: blackbox.Context): c.Expr[Project] = {
     import c.universe._
     val enclosingValName = std.KeyMacro.definingValName(
@@ -893,18 +908,36 @@ trait ProjectExtra {
     new Project.RichTaskSessionVar(init)
 
   def inThisBuild(ss: SettingsDefinition*): Seq[Setting[_]] =
-    inScope(ThisScope.copy(project = Select(ThisBuild)))(ss flatMap (_.settings))
+    macro Project.inThisBuildMacro
 
   def inConfig(conf: Configuration)(ss: SettingsDefinition*): Seq[Setting[_]] =
-    inScope(ThisScope.copy(config = Select(conf)))(
-      (configuration :== conf) +: (ss flatMap (_.settings))
-    )
+    macro Project.inConfigMacro
 
   def inTask(t: Scoped)(ss: SettingsDefinition*): Seq[Setting[_]] =
-    inScope(ThisScope.copy(task = Select(t.key)))(ss flatMap (_.settings))
+    macro Project.inTaskMacro
 
-  def inScope(scope: Scope)(ss: SettingsDefinition*): Seq[Setting[_]] =
-    Project.transform(Scope.replaceThis(scope), ss flatMap (_.settings))
+  private[ProjectExtra] def inThisBuild(ss: Seq[Setting[_]]): Seq[Setting[_]] =
+    inThisBuildImpl(ss)
+
+  private[sbt] def inThisBuildImpl(ss: Seq[Setting[_]]): Seq[Setting[_]] =
+    inScope(ThisScope.copy(project = Select(ThisBuild)))(ss)
+
+  private[ProjectExtra] def inConfig(conf: Configuration)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
+    inConfigImpl(conf)(ss)
+
+  private[sbt] def inConfigImpl(conf: Configuration)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
+    inScope(ThisScope.copy(config = Select(conf)))(
+      (configuration :== conf) +: ss
+    )
+
+  private[ProjectExtra] def inTask(t: Scoped)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
+    inTaskImpl(t)(ss)
+
+  private[sbt] def inTaskImpl(t: Scoped)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
+    inScope(ThisScope.copy(task = Select(t.key)))(ss)
+
+  def inScope(scope: Scope)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
+    Project.transform(Scope.replaceThis(scope), ss)
 
   private[sbt] def inThisBuild[T](i: Initialize[T]): Initialize[T] =
     inScope(ThisScope.copy(project = Select(ThisBuild)), i)

@@ -302,9 +302,11 @@ object Defaults extends BuildCommon {
   )
 
   def defaultTestTasks(key: Scoped): Seq[Setting[_]] =
-    inTask(key)(
-      tags := Seq(Tags.Test -> 1),
-      logBuffered := true
+    Project.inTaskImpl(key)(
+      Seq(
+        tags := Seq(Tags.Test -> 1),
+        logBuffered := true
+      )
     )
 
   // TODO: This should be on the new default settings for a project.
@@ -421,33 +423,34 @@ object Defaults extends BuildCommon {
   )
 
   // This is included into JvmPlugin.projectSettings
-  def compileBase = inTask(console)(compilersSetting :: Nil) ++ compileBaseGlobal ++ Seq(
-    incOptions := incOptions.value
-      .withClassfileManagerType(
-        Option(
-          TransactionalManagerType
-            .of(crossTarget.value / "classes.bak", sbt.util.Logger.Null): ClassFileManagerType
-        ).toOptional
+  def compileBase =
+    Project.inTaskImpl(console)(compilersSetting :: Nil) ++ compileBaseGlobal ++ Seq(
+      incOptions := incOptions.value
+        .withClassfileManagerType(
+          Option(
+            TransactionalManagerType
+              .of(crossTarget.value / "classes.bak", sbt.util.Logger.Null): ClassFileManagerType
+          ).toOptional
+        ),
+      scalaInstance := scalaInstanceTask.value,
+      crossVersion := (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled),
+      sbtBinaryVersion in pluginCrossBuild := binarySbtVersion(
+        (sbtVersion in pluginCrossBuild).value
       ),
-    scalaInstance := scalaInstanceTask.value,
-    crossVersion := (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled),
-    sbtBinaryVersion in pluginCrossBuild := binarySbtVersion(
-      (sbtVersion in pluginCrossBuild).value
-    ),
-    crossSbtVersions := Vector((sbtVersion in pluginCrossBuild).value),
-    crossTarget := makeCrossTarget(
-      target.value,
-      scalaBinaryVersion.value,
-      (sbtBinaryVersion in pluginCrossBuild).value,
-      sbtPlugin.value,
-      crossPaths.value
-    ),
-    clean := {
-      val _ = clean.value
-      IvyActions.cleanCachedResolutionCache(ivyModule.value, streams.value.log)
-    },
-    scalaCompilerBridgeSource := ZincUtil.getDefaultBridgeModule(scalaVersion.value)
-  )
+      crossSbtVersions := Vector((sbtVersion in pluginCrossBuild).value),
+      crossTarget := makeCrossTarget(
+        target.value,
+        scalaBinaryVersion.value,
+        (sbtBinaryVersion in pluginCrossBuild).value,
+        sbtPlugin.value,
+        crossPaths.value
+      ),
+      clean := {
+        val _ = clean.value
+        IvyActions.cleanCachedResolutionCache(ivyModule.value, streams.value.log)
+      },
+      scalaCompilerBridgeSource := ZincUtil.getDefaultBridgeModule(scalaVersion.value)
+    )
   // must be a val: duplication detected by object identity
   private[this] lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(
     Seq(
@@ -532,7 +535,7 @@ object Defaults extends BuildCommon {
   def defaultCompileSettings: Seq[Setting[_]] =
     globalDefaults(enableBinaryCompileAnalysis := true)
 
-  lazy val configTasks: Seq[Setting[_]] = docTaskSettings(doc) ++ inTask(compile)(
+  lazy val configTasks: Seq[Setting[_]] = docTaskSettings(doc) ++ Project.inTaskImpl(compile)(
     compileInputsSettings
   ) ++ configGlobal ++ defaultCompileSettings ++ compileAnalysisSettings ++ Seq(
     compile := compileTask.value,
@@ -567,7 +570,7 @@ object Defaults extends BuildCommon {
     // note that we use the same runner and mainClass as plain run
     mainBgRunMainTaskForConfig(This),
     mainBgRunTaskForConfig(This)
-  ) ++ inTask(run)(runnerSettings)
+  ) ++ Project.inTaskImpl(run)(runnerSettings)
 
   private[this] lazy val configGlobal = globalDefaults(
     Seq(
@@ -760,21 +763,23 @@ object Defaults extends BuildCommon {
   lazy val ConfigZero: Scope = ThisScope.copy(config = Zero)
   lazy val ConfigGlobal: Scope = ConfigZero
   def testTaskOptions(key: Scoped): Seq[Setting[_]] =
-    inTask(key)(
-      testListeners := {
-        TestLogger.make(
-          streams.value.log,
-          closeableTestLogger(
-            streamsManager.value,
-            test in resolvedScoped.value.scope,
-            logBuffered.value
-          )
-        ) +:
-          new TestStatusReporter(succeededFile(streams.in(test).value.cacheDirectory)) +:
-          testListeners.in(TaskZero).value
-      },
-      testOptions := Tests.Listeners(testListeners.value) +: (testOptions in TaskZero).value,
-      testExecution := testExecutionTask(key).value
+    Project.inTaskImpl(key)(
+      Seq(
+        testListeners := {
+          TestLogger.make(
+            streams.value.log,
+            closeableTestLogger(
+              streamsManager.value,
+              test in resolvedScoped.value.scope,
+              logBuffered.value
+            )
+          ) +:
+            new TestStatusReporter(succeededFile(streams.in(test).value.cacheDirectory)) +:
+            testListeners.in(TaskZero).value
+        },
+        testOptions := Tests.Listeners(testListeners.value) +: (testOptions in TaskZero).value,
+        testExecution := testExecutionTask(key).value
+      )
     ) ++ inScope(GlobalScope)(
       derive(testGrouping := singleTestGroupDefault.value)
     )
@@ -1048,25 +1053,29 @@ object Defaults extends BuildCommon {
   )
 
   lazy val packageConfig: Seq[Setting[_]] =
-    inTask(packageBin)(
-      packageOptions := {
-        val n = name.value
-        val ver = version.value
-        val org = organization.value
-        val orgName = organizationName.value
-        val main = mainClass.value
-        val old = packageOptions.value
-        Package.addSpecManifestAttributes(n, ver, orgName) +:
-          Package.addImplManifestAttributes(n, ver, homepage.value, org, orgName) +:
-          main.map(Package.MainClass.apply) ++: old
-      }
+    Project.inTaskImpl(packageBin)(
+      Seq(
+        packageOptions := {
+          val n = name.value
+          val ver = version.value
+          val org = organization.value
+          val orgName = organizationName.value
+          val main = mainClass.value
+          val old = packageOptions.value
+          Package.addSpecManifestAttributes(n, ver, orgName) +:
+            Package.addImplManifestAttributes(n, ver, homepage.value, org, orgName) +:
+            main.map(Package.MainClass.apply) ++: old
+        }
+      )
     ) ++
-      inTask(packageSrc)(
-        packageOptions := Package.addSpecManifestAttributes(
-          name.value,
-          version.value,
-          organizationName.value
-        ) +: packageOptions.value
+      Project.inTaskImpl(packageSrc)(
+        Seq(
+          packageOptions := Package.addSpecManifestAttributes(
+            name.value,
+            version.value,
+            organizationName.value
+          ) +: packageOptions.value
+        )
       ) ++
       packageTaskSettings(packageBin, packageBinMappings) ++
       packageTaskSettings(packageSrc, packageSrcMappings) ++
@@ -1153,13 +1162,15 @@ object Defaults extends BuildCommon {
     }
 
   def packageTaskSettings(key: TaskKey[File], mappingsTask: Initialize[Task[Seq[(File, String)]]]) =
-    inTask(key)(
-      key in TaskZero := packageTask.value,
-      packageConfiguration := packageConfigurationTask.value,
-      mappings := mappingsTask.value,
-      packagedArtifact := (artifact.value -> key.value),
-      artifact := artifactSetting.value,
-      artifactPath := artifactPathSetting(artifact).value
+    Project.inTaskImpl(key)(
+      Seq(
+        key in TaskZero := packageTask.value,
+        packageConfiguration := packageConfigurationTask.value,
+        mappings := mappingsTask.value,
+        packagedArtifact := (artifact.value -> key.value),
+        artifact := artifactSetting.value,
+        artifactPath := artifactPathSetting(artifact).value
+      )
     )
 
   def packageTask: Initialize[Task[File]] =
@@ -1366,50 +1377,52 @@ object Defaults extends BuildCommon {
   }
 
   def docTaskSettings(key: TaskKey[File] = doc): Seq[Setting[_]] =
-    inTask(key)(
-      apiMappings ++= {
-        val dependencyCp = dependencyClasspath.value
-        val log = streams.value.log
-        if (autoAPIMappings.value) APIMappings.extract(dependencyCp, log).toMap
-        else Map.empty[File, URL]
-      },
-      fileInputOptions := Seq("-doc-root-content", "-diagrams-dot-path"),
-      key in TaskZero := {
-        val s = streams.value
-        val cs: Compilers = compilers.value
-        val srcs = sources.value
-        val out = target.value
-        val sOpts = scalacOptions.value
-        val xapis = apiMappings.value
-        val hasScala = srcs.exists(_.name.endsWith(".scala"))
-        val hasJava = srcs.exists(_.name.endsWith(".java"))
-        val cp = data(dependencyClasspath.value).toList
-        val label = nameForSrc(configuration.value.name)
-        val fiOpts = fileInputOptions.value
-        val reporter = (compilerReporter in compile).value
-        (hasScala, hasJava) match {
-          case (true, _) =>
-            val options = sOpts ++ Opts.doc.externalAPI(xapis)
-            val runDoc = Doc.scaladoc(label, s.cacheStoreFactory sub "scala", cs.scalac match {
-              case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scaladoc"))
-            }, fiOpts)
-            runDoc(srcs, cp, out, options, maxErrors.value, s.log)
-          case (_, true) =>
-            val javadoc =
-              sbt.inc.Doc.cachedJavadoc(label, s.cacheStoreFactory sub "java", cs.javaTools)
-            javadoc.run(
-              srcs.toList,
-              cp,
-              out,
-              javacOptions.value.toList,
-              IncToolOptionsUtil.defaultIncToolOptions(),
-              s.log,
-              reporter
-            )
-          case _ => () // do nothing
+    Project.inTaskImpl(key)(
+      Seq(
+        apiMappings ++= {
+          val dependencyCp = dependencyClasspath.value
+          val log = streams.value.log
+          if (autoAPIMappings.value) APIMappings.extract(dependencyCp, log).toMap
+          else Map.empty[File, URL]
+        },
+        fileInputOptions := Seq("-doc-root-content", "-diagrams-dot-path"),
+        key in TaskZero := {
+          val s = streams.value
+          val cs: Compilers = compilers.value
+          val srcs = sources.value
+          val out = target.value
+          val sOpts = scalacOptions.value
+          val xapis = apiMappings.value
+          val hasScala = srcs.exists(_.name.endsWith(".scala"))
+          val hasJava = srcs.exists(_.name.endsWith(".java"))
+          val cp = data(dependencyClasspath.value).toList
+          val label = nameForSrc(configuration.value.name)
+          val fiOpts = fileInputOptions.value
+          val reporter = (compilerReporter in compile).value
+          (hasScala, hasJava) match {
+            case (true, _) =>
+              val options = sOpts ++ Opts.doc.externalAPI(xapis)
+              val runDoc = Doc.scaladoc(label, s.cacheStoreFactory sub "scala", cs.scalac match {
+                case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scaladoc"))
+              }, fiOpts)
+              runDoc(srcs, cp, out, options, maxErrors.value, s.log)
+            case (_, true) =>
+              val javadoc =
+                sbt.inc.Doc.cachedJavadoc(label, s.cacheStoreFactory sub "java", cs.javaTools)
+              javadoc.run(
+                srcs.toList,
+                cp,
+                out,
+                javacOptions.value.toList,
+                IncToolOptionsUtil.defaultIncToolOptions(),
+                s.log,
+                reporter
+              )
+            case _ => () // do nothing
+          }
+          out
         }
-        out
-      }
+      )
     )
 
   def mainBgRunTask = mainBgRunTaskForConfig(Select(Runtime))
