@@ -71,41 +71,26 @@ private[sbt] object CrossJava {
   }
 
   private case class SwitchTarget(version: Option[JavaVersion], home: Option[File], force: Boolean)
-  private case class SwitchJavaHome(target: SwitchTarget, verbose: Boolean, command: Option[String])
 
-  private def switchParser(state: State): Parser[SwitchJavaHome] = {
+  private def switchParser(state: State): Parser[SwitchTarget] = {
     import DefaultParsers._
-    def versionAndCommand(spacePresent: Boolean) = {
-      val x = Project.extract(state)
-      import x._
-      val javaHomes = getJavaHomesTyped(x, currentRef)
-      val knownVersions = javaHomes.keysIterator.map(_.numberStr).toVector
-      val version: Parser[SwitchTarget] =
-        (token(
-          (StringBasic <~ "@").? ~ ((NatBasic) ~ ("." ~> NatBasic).*)
-            .examples(knownVersions: _*) ~ "!".?
-        ) || token(StringBasic))
-          .map {
-            case Left(((vendor, (v1, vs)), bang)) =>
-              val force = bang.isDefined
-              val versionArg = (Vector(v1) ++ vs) map { _.toLong }
-              SwitchTarget(Option(JavaVersion(versionArg, vendor)), None, force)
-            case Right(home) =>
-              SwitchTarget(None, Option(new File(home)), true)
-          }
-      val spacedVersion =
-        if (spacePresent) version
-        else version & spacedFirst(JavaSwitchCommand)
-      val verbose = Parser.opt(token(Space ~> "-v"))
-      val optionalCommand = Parser.opt(token(Space ~> matched(state.combinedParser)))
-      (spacedVersion ~ verbose ~ optionalCommand).map {
-        case v ~ verbose ~ command =>
-          SwitchJavaHome(v, verbose.isDefined, command)
+    val x = Project.extract(state)
+    import x._
+    val javaHomes = getJavaHomesTyped(x, currentRef)
+    val knownVersions = javaHomes.keysIterator.map(_.numberStr).toVector
+    val version = (token(
+      (StringBasic <~ "@").? ~ ((NatBasic) ~ ("." ~> NatBasic).*)
+        .examples(knownVersions: _*) ~ "!".?
+    ) || token(StringBasic))
+      .map {
+        case Left(((vendor, (v1, vs)), bang)) =>
+          val force = bang.isDefined
+          val versionArg = (Vector(v1) ++ vs) map { _.toLong }
+          SwitchTarget(Option(JavaVersion(versionArg, vendor)), None, force)
+        case Right(home) =>
+          SwitchTarget(None, Option(new File(home)), true)
       }
-    }
-    token(JavaSwitchCommand ~> OptSpace) flatMap { sp =>
-      versionAndCommand(sp.nonEmpty)
-    }
+    JavaSwitchCommand ~> OptSpace ~> version
   }
 
   private def getJavaHomes(
@@ -143,7 +128,7 @@ private[sbt] object CrossJava {
     } getOrElse Vector()
   }
 
-  private def switchCommandImpl(state: State, switch: SwitchJavaHome): State = {
+  private def switchCommandImpl(state: State, switch: SwitchTarget): State = {
     val extracted = Project.extract(state)
     import extracted._
     import Keys.javaHome
@@ -154,9 +139,9 @@ private[sbt] object CrossJava {
     val projects: Seq[(ResolvedReference, Seq[String])] = {
       val projectJavaVersions =
         structure.allProjectRefs.map(proj => proj -> getCrossJavaVersions(extracted, proj))
-      if (switch.target.force) projectJavaVersions
+      if (switch.force) projectJavaVersions
       else
-        switch.target.version match {
+        switch.version match {
           case None => projectJavaVersions
           case Some(v) =>
             projectJavaVersions flatMap {
@@ -172,10 +157,10 @@ private[sbt] object CrossJava {
       val newSettings = projects.flatMap {
         case (proj, javaVersions) =>
           val fjh = getJavaHomesTyped(extracted, proj)
-          val home = switch.target match {
+          val home = switch match {
             case SwitchTarget(Some(v), _, _) => lookupJavaHome(v, fjh)
             case SwitchTarget(_, Some(h), _) => h
-            case _                           => sys.error(s"unexpected ${switch.target}")
+            case _                           => sys.error(s"unexpected ${switch}")
           }
           val scope = Scope(Select(proj), Zero, Zero, Zero)
           Seq(
