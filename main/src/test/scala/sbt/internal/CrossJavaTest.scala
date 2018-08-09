@@ -9,6 +9,7 @@ package sbt.internal
 
 import org.specs2.mutable.Specification
 import sbt.internal.CrossJava.JavaDiscoverConfig.LinuxDiscoverConfig
+import sbt.internal.util.complete.Suggestion
 
 class CrossJavaTest extends Specification {
   "The Java home selector" should {
@@ -16,6 +17,31 @@ class CrossJavaTest extends Specification {
       List("jdk1.8.0.jdk", "jdk1.8.0_121.jdk", "jdk1.8.0_45.jdk")
         .sortWith(CrossJava.versionOrder)
         .last must be equalTo ("jdk1.8.0_121.jdk")
+    }
+
+    "parser tab completions" in {
+      val versions = Vector("1.7", "1.8", "9")
+      val parser = CrossJava.versionParser(versions)
+      val completions0 = parser.completions(0).get
+      completions0.size must_== 7
+      completions0.collect { case s: Suggestion => s.append } must_== Set(
+        "1.7",
+        "1.7!",
+        "1.8",
+        "1.8!",
+        "9",
+        "9!",
+        ""
+      )
+
+      val completions1 = parser.derive('1').completions(0).get
+      completions1.size must_== 4
+      completions1.collect { case s: Suggestion => s.append } must_== Set(
+        ".7",
+        ".7!",
+        ".8",
+        ".8!"
+      )
     }
   }
 

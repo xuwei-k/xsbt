@@ -70,8 +70,26 @@ private[sbt] object CrossJava {
                  |use Global / javaHomes += JavaVersion("$version") -> file(...)""".stripMargin)
   }
 
-  private case class SwitchTarget(version: Option[JavaVersion], home: Option[File], force: Boolean)
+  private[sbt] case class SwitchTarget(
+      version: Option[JavaVersion],
+      home: Option[File],
+      force: Boolean
+  )
   private case class SwitchJavaHome(target: SwitchTarget, verbose: Boolean, command: Option[String])
+
+  private[sbt] def versionParser(knownVersions: Vector[String]): Parser[SwitchTarget] = {
+    ((token(
+      (StringBasic <~ "@").? ~ (NatBasic ~ ("." ~> NatBasic).*)
+    ).examples(knownVersions: _*) ~ "!".?) || token(StringBasic).examples())
+      .map {
+        case Left(((vendor, (v1, vs)), bang)) =>
+          val force = bang.isDefined
+          val versionArg = (Vector(v1) ++ vs) map { _.toLong }
+          SwitchTarget(Option(JavaVersion(versionArg, vendor)), None, force)
+        case Right(home) =>
+          SwitchTarget(None, Option(new File(home)), true)
+      }
+  }
 
   private def switchParser(state: State): Parser[SwitchJavaHome] = {
     import DefaultParsers._
@@ -80,19 +98,7 @@ private[sbt] object CrossJava {
       import x._
       val javaHomes = getJavaHomesTyped(x, currentRef)
       val knownVersions = javaHomes.keysIterator.map(_.numberStr).toVector
-      val version: Parser[SwitchTarget] =
-        (token(
-          (StringBasic <~ "@").? ~ ((NatBasic) ~ ("." ~> NatBasic).*)
-            .examples(knownVersions: _*) ~ "!".?
-        ) || token(StringBasic))
-          .map {
-            case Left(((vendor, (v1, vs)), bang)) =>
-              val force = bang.isDefined
-              val versionArg = (Vector(v1) ++ vs) map { _.toLong }
-              SwitchTarget(Option(JavaVersion(versionArg, vendor)), None, force)
-            case Right(home) =>
-              SwitchTarget(None, Option(new File(home)), true)
-          }
+      val version = versionParser(knownVersions)
       val spacedVersion =
         if (spacePresent) version
         else version & spacedFirst(JavaSwitchCommand)
