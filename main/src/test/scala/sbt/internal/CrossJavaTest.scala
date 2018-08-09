@@ -9,7 +9,7 @@ package sbt.internal
 
 import org.specs2.mutable.Specification
 import sbt.internal.CrossJava.JavaDiscoverConfig.LinuxDiscoverConfig
-import sbt.internal.util.complete.Suggestion
+import sbt.internal.util.complete.{ DisplayOnly, Suggestion }
 
 class CrossJavaTest extends Specification {
   "The Java home selector" should {
@@ -19,29 +19,42 @@ class CrossJavaTest extends Specification {
         .last must be equalTo ("jdk1.8.0_121.jdk")
     }
 
-    "parser tab completions" in {
-      val versions = Vector("1.7", "1.8", "9")
+    "java++ parser" in {
+      val versions = Vector("1.7", "1.8", "9", "openjdk@1.11")
       val parser = CrossJava.versionParser(versions)
       val completions0 = parser.completions(0).get
-      completions0.size must_== 7
+      completions0.size must_== 8
       completions0.collect { case s: Suggestion => s.append } must_== Set(
+        "openjdk@1.11",
+        "openjdk@1.11!",
         "1.7",
         "1.7!",
         "1.8",
         "1.8!",
         "9",
-        "9!",
-        ""
+        "9!"
       )
 
       val completions1 = parser.derive('1').completions(0).get
-      completions1.size must_== 4
+      completions1.size must_== 5
       completions1.collect { case s: Suggestion => s.append } must_== Set(
         ".7",
         ".7!",
         ".8",
         ".8!"
       )
+
+      val completions2 = parser.derive('o').completions(0).get
+      completions2.size must_== 3
+      completions2.collect { case s: Suggestion => s.append } must_== Set(
+        "penjdk@1.11",
+        "penjdk@1.11!"
+      )
+
+      val completions3 = parser.derive('a').completions(0).get
+      completions3.toList.map(x => (x, x.getClass)).foreach(println)
+      completions3.size must_== 1
+      true
     }
   }
 

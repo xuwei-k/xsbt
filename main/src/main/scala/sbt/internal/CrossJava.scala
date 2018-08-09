@@ -78,17 +78,22 @@ private[sbt] object CrossJava {
   private case class SwitchJavaHome(target: SwitchTarget, verbose: Boolean, command: Option[String])
 
   private[sbt] def versionParser(knownVersions: Vector[String]): Parser[SwitchTarget] = {
-    ((token(
-      (StringBasic <~ "@").? ~ (NatBasic ~ ("." ~> NatBasic).*)
-    ).examples(knownVersions: _*) ~ "!".?) || token(StringBasic).examples())
-      .map {
-        case Left(((vendor, (v1, vs)), bang)) =>
-          val force = bang.isDefined
-          val versionArg = (Vector(v1) ++ vs) map { _.toLong }
-          SwitchTarget(Option(JavaVersion(versionArg, vendor)), None, force)
-        case Right(home) =>
-          SwitchTarget(None, Option(new File(home)), true)
-      }
+    val javaVersion = {
+      val vendor = (StringBasic.filter(_.nonEmpty, _ => "empty vendor name") <~ "@").?
+      val v = rep1sep(NatBasic, ".")
+      token(vendor ~ v, "java version").examples(knownVersions: _*) ~ "!".?
+    }
+    val javaHome =
+      token(StringBasic, "java home directory").filter(_.nonEmpty, s => "empty java home directory")
+
+    (javaVersion || javaHome).map {
+      case Left(((vendor, v), bang)) =>
+        val force = bang.isDefined
+        val versionArg = v.map(_.toLong).toVector
+        SwitchTarget(Option(JavaVersion(versionArg, vendor)), None, force)
+      case Right(home) =>
+        SwitchTarget(None, Option(new File(home)), true)
+    }
   }
 
   private def switchParser(state: State): Parser[SwitchJavaHome] = {
