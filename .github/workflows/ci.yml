@@ -9,20 +9,7 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            java: 11
-            jobtype: 1
-          - os: ubuntu-latest
-            java: 11
-            jobtype: 2
-          - os: ubuntu-latest
-            java: 11
-            jobtype: 3
-          - os: ubuntu-latest
-            java: 11
-            jobtype: 4
-          - os: ubuntu-latest
             java: 8
-            jobtype: 5
     runs-on: ${{ matrix.os }}
     env:
       JAVA_OPTS: -Xms800M -Xmx800M -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
@@ -64,33 +51,7 @@ jobs:
         key: ${{ runner.os }}-sbt-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
     - name: Build and test
       run: |
-        case ${{ matrix.jobtype }} in
-          1)
-            sbt -v "mimaReportBinaryIssues ; javafmtCheck ; Test / javafmtCheck; scalafmtCheckAll ; scalafmtSbtCheck; serverTestProj/scalafmtCheckAll; headerCheck ;test:headerCheck ;whitesourceOnPush ;test:compile; publishLocal; test; serverTestProj/test; doc; $UTIL_TESTS; ++$SCALA_213; $UTIL_TESTS"
-            ;;
-          2)
-            sbt -v "scripted actions/* apiinfo/* compiler-project/* ivy-deps-management/* reporter/* tests/* watch/* classloader-cache/* package/*"
-            ;;
-          3)
-            sbt -v "dependencyTreeProj/publishLocal; scripted dependency-graph/* dependency-management/* plugins/* project-load/* java/* run/* nio/*"
-            ;;
-          4)
-            sbt -v "repoOverrideTest:scripted dependency-management/*; scripted source-dependencies/* project/*"
-            ;;
-          5)
-            # build from fresh IO, LM, and Zinc
-            BUILD_VERSION="1.4.0-SNAPSHOT"
-            cd io
-            sbt -v -Dsbt.build.version=${BUILD_VERSION} +publishLocal
-            cd ../
-            sbt -Dsbtlm.path=$HOME/work/sbt/sbt/librarymanagement -Dsbtzinc.path=$HOME/work/sbt/sbt/zinc -Dsbt.build.version=$BUILD_VERSION -Dsbt.build.fatal=false "+lowerUtils/publishLocal; {librarymanagement}/publishLocal; {zinc}/publishLocal; upperModules/publishLocal"
-            rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
-            sbt -v -Dsbt.version=$BUILD_VERSION "++$SCALA_213; $UTIL_TESTS; ++$SCALA_212; $UTIL_TESTS; scripted actions/* source-dependencies/*1of3 dependency-management/*1of4 java/*"
-            ;;
-          *)
-            echo unknown jobtype
-            exit 1
-        esac
+        sbt -v "scripted project/scripted13"
         rm -rf "$HOME/.ivy2/local" || true
         rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
         find $HOME/Library/Caches/Coursier/v1        -name "ivydata-*.properties" -delete || true
